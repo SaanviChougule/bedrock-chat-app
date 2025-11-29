@@ -1,49 +1,58 @@
 provider "aws" {
-  region = "us-west-2"  # Change this to your desired region
+  region = var.region
 }
 
+# -----------------------
+# VPC Module
+# -----------------------
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
-  name = "bedrock-poc-vpc"
-  cidr = "10.0.0.0/16"
+  name             = var.vpc_name
+  cidr             = var.vpc_cidr
+  azs              = var.azs
+  private_subnets  = var.private_subnets
+  public_subnets   = var.public_subnets
 
-  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-
-  enable_nat_gateway = true
-  single_nat_gateway = true
+  enable_nat_gateway = var.enable_nat_gateway
+  single_nat_gateway = var.single_nat_gateway
 
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    Terraform   = "true"
-    Environment = "dev"
-  }
+  tags = var.tags
 }
 
+# -----------------------
+# Aurora Serverless Module
+# -----------------------
 module "aurora_serverless" {
   source = "../modules/database"
 
-  cluster_identifier = "my-aurora-serverless"
-  vpc_id             = module.vpc.vpc_id 
+  cluster_identifier = var.db_cluster_identifier
+  vpc_id             = module.vpc.vpc_id
   subnet_ids         = module.vpc.private_subnets
 
-  # Optionally override other defaults
-  database_name    = "myapp"
-  master_username  = "dbadmin"
-  max_capacity     = 1
-  min_capacity     = 0.5
-  allowed_cidr_blocks = ["10.0.0.0/16"]   
+  database_name      = var.db_name
+  master_username    = var.db_master_username
+  max_capacity       = var.db_max_capacity
+  min_capacity       = var.db_min_capacity
+  # Omit engine_version to auto-select latest valid in region
+  allowed_cidr_blocks = var.allowed_cidr_blocks
 }
 
+# -----------------------
+# S3 Bucket Module
+# -----------------------
 data "aws_caller_identity" "current" {}
 
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
 locals {
-  bucket_name = "bedrock-kb-${data.aws_caller_identity.current.account_id}"
+  bucket_name = "${var.s3_bucket_prefix}-${data.aws_caller_identity.current.account_id}-${random_id.suffix.hex}"
 }
 
 module "s3_bucket" {
@@ -51,8 +60,8 @@ module "s3_bucket" {
   version = "~> 3.0"
 
   bucket = local.bucket_name
-  acl    = "private"
-  force_destroy = true
+  acl    = var.s3_acl
+  force_destroy = var.s3_force_destroy
 
   control_object_ownership = true
   object_ownership         = "BucketOwnerPreferred"
@@ -74,8 +83,5 @@ module "s3_bucket" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 
-  tags = {
-    Terraform   = "true"
-    Environment = "dev"
-  }
+  tags = var.tags
 }

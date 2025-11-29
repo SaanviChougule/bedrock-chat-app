@@ -6,7 +6,7 @@ variable "cluster_identifier" {
 variable "engine_version" {
   description = "The engine version to use"
   type        = string
-  default     = "15.4"
+  default     = "15.6"
 }
 
 variable "database_name" {
@@ -20,6 +20,7 @@ variable "master_username" {
   type        = string
   default     = "admin"
 }
+
 
 variable "backup_retention_period" {
   description = "The days to retain backups for"

@@ -1,0 +1,3 @@
+oid,extname,extowner,extnamespace,extrelocatable,extversion,extconfig,extcondition
+14498,plpgsql,10,11,false,1.0,NULL,NULL
+16446,vector,10,2200,true,0.5.1,NULL,NULL
